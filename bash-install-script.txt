@@ -1,0 +1,141 @@
+Add User
+useradd mwelness 
+passwd mwelness
+
+Edit sudo file and add mwelness
+
+visudo 
+exit
+
+ fab -H cilsdbxd2408.silver.com install_saltminion -u mwelness -p Apple19
+ 
+ On the salt-master accept the new servers keys
+ ~ salt-key -a cilsdbxd2408.silver.com
+ 
+ 
+Now login to the new server and run the first state 
+[root@cilsdbxd2408 ~]# salt-call state.highstate test=true
+
+Run Salt Initialization Scripts
+salt-call state.highstate test=true 
+salt-call state.highstate
+salt-call pillar.items
+salt-call grains.ls
+salt-call grains.get ip4_interfaces 
+salt-call grains.get server_id 
+salt-call grains.get shell
+salt-call grains.get os
+exit
+
+Install Node
+yum groupinstall 'Development Tools'
+yum install nodejs npm
+
+Reroute through Internal Proxy. 
+Set IP from Internal network address 
+
+ifconfig
+npm config set proxy -g http://10.25.175.100:3128
+
+Install Maven by copying from known good server
+scp -rp mwelness@cilsdbxd2408.silver.com:/usr/local/apache-maven-3.2.1 /usr/local/ scp -rp mwelness@cilsdbxd2408.silver.com:/home/mwelness/.m2 . /opt/mwelness/ 
+
+Add PATH to bash_profile to both root and mwelness
+vi .bash_profile
+PATH=$PATH:$HOME/bin:/usr/local/apache-maven-3.2.1/bin
+
+Install Java
+yum install java-1.7.0-openjdk-devel 
+yum install java-1.7.0-openjdk
+
+Copy known good mwelness ssh keys from another server
+scp -rp mwelness@cilsdbxd2408.silver.com:/home/mwelness/.ssh ~ 
+
+Create a soft link to java
+ln -s /usr/bin/java /usr/java/default/bin/java
+
+Create a soft link to Jenkins to ensure it builds on larger mount
+ln -s /opt/jenkins /opt/mwelness/jenkins
+
+Change owner
+chown -R mwelness:mwelness /opt/jenkins 
+
+Install (update) git
+yum remove git
+yum install curl-devel expat-devel gettext-devel openssl-devel zlib-devel 
+yum install gcc perl-ExtUtils-MakeMaker
+
+wget https://www.kernel.org/pub/software/scm/git/git-2.0.4.tar.gz tar xzf git-2.0.4.tar.gz
+cd git-2.0.4
+make prefix=/var/opt/git all
+
+As root: echo "export PATH=$PATH:/var/opt/git/bin" >> /etc/bashrc 
+As mwelness: echo "export PATH=$PATH:/var/opt/git/bin" >> bashrc
+
+Copy Git credentials from known-good server
+scp -rp mwelness@cilsdbxd2408.silver.com:/home/mwelness/.gitconfig . scp -rp mwelness@cilsdbxd2408:/home/mwelness/.git-credentials .
+
+Install Mongodb
+yum search mongo
+yum install mongodb.x86_64
+yum install mongodb-server.x86_64 
+yum install nodejs-mongodb.noarch 
+yum install pymongo.x86_64
+
+Copy known-good mongodb conf from server
+scp -rp mwelness@cilsdbxd2408.silver.com:/etc/mongod.conf /etc/ 
+
+Ensure that mongodb.conf dbpath=/opt/jenkins
+
+Move mongodb to the /opt/jenkins mount for more space and soft-link to it
+ln -s /opt/jenkins/mongodb /var/lib/mongodb
+
+Copy mongo_database from known good server to carry over users.
+scp -rp mwelness@cilsdbxd2408.silver.com:/opt/mwelness/mongo_database ~
+
+Change rights.
+chown -R mongodb:mongodb mongodb
+chown -R mongodb:mongodb mongo_database
+
+Check that mongodb starts
+service mongod stop 
+service mongod start 
+service mongod restart
+
+Install rubygems
+yum -y install gcc
+yum -y install ruby-devel 
+yum -y install rubygems
+gem update --system
+
+Install ruby gems from local source
+scp -rp mwelness@cilsdbxd2408.silver.com:/home/mwelness/rubygems ~
+
+gem install chunky_png-1.3.3.gem gem install rb-fsevent-0.9.4.gem gem install rb-inotify-0.9.5-2.gem 
+gem install ffi-1.9.6-2.gem
+gem install sass-3.4.9.gem
+gem install compass-core-1.0.1.gem 
+gem install multi_json
+gem install compass-core-1.0.1.gem 
+gem install compass-1.0.1.gem
+
+Copy over uDeploy Management scripts
+scp -rp mwelness@cilsdbxd2408.silver.com:/opt/mwelness/build-automation/uDeploy/management_scripts/ ~
+
+Change owners on directory
+chown -R mwelness:mwelness build-automation/uDeploy/management_scripts/
+
+Install Grunt npm update
+npm install -g inherits npm install -g ldapauth npm install -g grunt-cli
+
+Install mocha
+npm install -g mocha
+
+*Crontabs
+May need to add cron tabs to ensure rights are maintained:
+*/1 * * * * chown -R mwelness:mwelness /opt/jenkins/workspace
+*/1 * * * * chown -R mwelness:mwelness /opt/jenkins/tools
+*/1 * * * * chown -R mongodb:mongodb /opt/jenkins/mongo_database 
+*/1 * * * * chown -R mongodb:mongodb /opt/jenkins/journal
+*/1 * * * * chown -R mongodb:mongodb /opt/jenkins/mongodb
+*/1 * * * * chown -R mongodb:mongodb /opt/jenkins/mongod.lock
